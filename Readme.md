@@ -47,10 +47,6 @@ packages/
 6. `worker` processes submissions and publishes output.
 7. `websocket-server` routes output back to the correct room/user.
 
-System design image:
-
-![System Design](./system-design.png)
-
 ## Prerequisites
 
 - Node.js `>= 18`
