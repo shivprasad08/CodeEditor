@@ -1,0 +1,82 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+	--bg-primary: #1a0533;
+	--bg-editor: #2d1b4e;
+	--accent: #ff00ff;
+	--text-primary: #00ffff;
+}
+
+html,
+body,
+#root {
+	background-color: var(--bg-primary);
+	color: var(--text-primary);
+}
+
+@keyframes register-blink {
+	0%,
+	49% {
+		opacity: 1;
+	}
+	50%,
+	100% {
+		opacity: 0;
+	}
+}
+
+@keyframes register-float {
+	0% {
+		transform: translateY(0px) translateX(0px);
+	}
+	50% {
+		transform: translateY(-20px) translateX(16px);
+	}
+	100% {
+		transform: translateY(0px) translateX(0px);
+	}
+}
+
+.register-page {
+	position: relative;
+}
+
+.register-grid {
+	background-image:
+		linear-gradient(rgba(88, 166, 255, 0.08) 1px, transparent 1px),
+		linear-gradient(90deg, rgba(88, 166, 255, 0.08) 1px, transparent 1px);
+	background-size: 52px 52px;
+	background-position: center center;
+}
+
+.register-glow {
+	position: absolute;
+	border-radius: 9999px;
+	filter: blur(80px);
+	opacity: 0.28;
+	pointer-events: none;
+	animation: register-float 10s ease-in-out infinite;
+}
+
+.register-glow-one {
+	width: 340px;
+	height: 340px;
+	background: #1f6feb;
+	top: -60px;
+	left: -100px;
+}
+
+.register-glow-two {
+	width: 360px;
+	height: 360px;
+	background: #2ea043;
+	bottom: -80px;
+	right: -110px;
+	animation-delay: 1.8s;
+}
+
+.register-blink {
+	animation: register-blink 1s steps(1, end) infinite;
+}
