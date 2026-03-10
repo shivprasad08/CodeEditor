@@ -1,13 +1,16 @@
 import Editor from '@monaco-editor/react';
 import { useEffect, useRef } from 'react';
-import { languageTemplates } from '../lib/languageTemplates';
-
-const defaultCode = languageTemplates.javascript;
 
 const injectedStyles = new Set();
 
 function sanitizeId(id = '') {
   return String(id).replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+function escapeCssContent(value = '') {
+  return String(value)
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"');
 }
 
 function ensureUserCursorStyle(user) {
@@ -28,38 +31,64 @@ function ensureUserCursorStyle(user) {
     }
 
     .remote-label-${safeId} {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 20px;
-      height: 20px;
-      margin-left: 5px;
-      margin-top: -16px;
-      background: ${user.color};
-      color: #ffffff;
-      font-size: 11px;
-      font-weight: 700;
-      line-height: 1;
       position: relative;
-      border-radius: 9999px;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.15);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      pointer-events: none;
-      z-index: 5;
     }
 
     .remote-label-${safeId}::after {
-      content: '';
+      content: "${escapeCssContent((user.name || user.initial || 'User').slice(0, 24))}";
       position: absolute;
-      left: 50%;
-      top: 100%;
-      width: 0;
-      height: 0;
-      margin-left: -3px;
-      border-left: 4px solid transparent;
-      border-right: 4px solid transparent;
-      border-top: 5px solid ${user.color};
-      filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.28));
+      left: 8px;
+      top: -20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      max-width: 240px;
+      padding: 4px 10px;
+      background: ${user.color};
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      line-height: 1;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+      pointer-events: none;
+      z-index: 6;
+    }
+  `;
+
+  document.head.appendChild(style);
+  injectedStyles.add(styleId);
+}
+
+function toRgba(hexColor, alpha) {
+  const raw = String(hexColor || '').replace('#', '');
+  const normalized = raw.length === 3
+    ? raw.split('').map((value) => `${value}${value}`).join('')
+    : raw.padEnd(6, '0').slice(0, 6);
+
+  const red = parseInt(normalized.substring(0, 2), 16);
+  const green = parseInt(normalized.substring(2, 4), 16);
+  const blue = parseInt(normalized.substring(4, 6), 16);
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
+function ensureUserSelectionStyle(user) {
+  const safeId = sanitizeId(user.id);
+  const styleId = `remote-selection-${safeId}`;
+
+  if (injectedStyles.has(styleId)) {
+    return;
+  }
+
+  const style = document.createElement('style');
+  style.id = styleId;
+  style.textContent = `
+    .remote-selection-${safeId} {
+      background-color: ${toRgba(user.color, 0.24)};
+      border-bottom: 1px solid ${toRgba(user.color, 0.8)};
     }
   `;
 
@@ -86,11 +115,34 @@ export default function EditorPane({ value, onChange, onCursorChange, remoteCurs
         // Double-check: never render local user's cursor
         return cursor.user.id !== localUserId;
       })
-      .map((cursor) => {
+      .flatMap((cursor) => {
         ensureUserCursorStyle(cursor.user);
+        ensureUserSelectionStyle(cursor.user);
         const safeId = sanitizeId(cursor.user.id);
 
-        return {
+        const items = [];
+
+        if (cursor.selection && Number.isInteger(cursor.selection.start) && Number.isInteger(cursor.selection.end)) {
+          const model = editorRef.current.getModel();
+          const maxOffset = model.getValueLength();
+          const startOffset = Math.max(0, Math.min(cursor.selection.start, maxOffset));
+          const endOffset = Math.max(0, Math.min(cursor.selection.end, maxOffset));
+
+          if (startOffset !== endOffset) {
+            const from = model.getPositionAt(Math.min(startOffset, endOffset));
+            const to = model.getPositionAt(Math.max(startOffset, endOffset));
+
+            items.push({
+              range: new monaco.Range(from.lineNumber, from.column, to.lineNumber, to.column),
+              options: {
+                className: `remote-selection-${safeId}`,
+                isWholeLine: false,
+              },
+            });
+          }
+        }
+
+        items.push({
           range: new monaco.Range(
             cursor.position.lineNumber,
             cursor.position.column,
@@ -99,12 +151,11 @@ export default function EditorPane({ value, onChange, onCursorChange, remoteCurs
           ),
           options: {
             beforeContentClassName: `remote-caret-${safeId}`,
-            after: {
-              contentText: cursor.user.initial || '?',
-              inlineClassName: `remote-label-${safeId}`,
-            },
+            afterContentClassName: `remote-label-${safeId}`,
           },
-        };
+        });
+
+        return items;
       });
 
     decorationIdsRef.current = editorRef.current.deltaDecorations(decorationIdsRef.current, decorations);
@@ -115,7 +166,7 @@ export default function EditorPane({ value, onChange, onCursorChange, remoteCurs
       <Editor
         height="100%"
         language={language}
-        value={value || defaultCode}
+        value={value ?? ''}
         onChange={(nextValue) => onChange(nextValue || '')}
         theme="vs-dark"
         options={{
@@ -139,9 +190,33 @@ export default function EditorPane({ value, onChange, onCursorChange, remoteCurs
           editorRef.current = editor;
           monacoRef.current = monaco;
 
+          const emitPresence = () => {
+            const model = editor.getModel();
+            const position = editor.getPosition();
+            const selection = editor.getSelection();
+
+            if (!model || !position || !selection) {
+              return;
+            }
+
+            onCursorChange({
+              position,
+              selection: {
+                start: model.getOffsetAt(selection.getStartPosition()),
+                end: model.getOffsetAt(selection.getEndPosition()),
+              },
+            });
+          };
+
           editor.onDidChangeCursorPosition((event) => {
-            onCursorChange(event.position);
+            emitPresence();
           });
+
+          editor.onDidChangeCursorSelection(() => {
+            emitPresence();
+          });
+
+          emitPresence();
         }}
       />
     </section>

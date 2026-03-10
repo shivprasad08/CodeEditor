@@ -8,7 +8,7 @@ const navItems = [
 
 export default function Sidebar() {
   return (
-    <aside className="flex w-14 shrink-0 flex-col items-center gap-5 border-r border-app-border bg-zinc-950 py-4">
+    <aside className="hidden w-14 shrink-0 flex-col items-center gap-5 border-r border-app-border bg-zinc-950 py-4 sm:flex">
       {navItems.map((item) => {
         const Icon = item.icon;
         return (

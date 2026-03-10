@@ -16,20 +16,35 @@ const languages = [
   { id: 'sql', label: 'SQL' },
 ];
 
-export default function TopBar({ roomId, users, language, onLanguageChange, onInvite, onExport }) {
+export default function TopBar({
+  roomId,
+  users,
+  userName,
+  language,
+  onLanguageChange,
+  onInvite,
+  onSaveSnippet,
+  onLoadSnippet,
+  onDeleteSnippet,
+  snippetIdInput,
+  onSnippetIdInputChange,
+  onRunCode,
+  isCompiling,
+}) {
   return (
-    <header className="flex h-12 items-center justify-between border-b border-app-border bg-zinc-950 px-5">
-      <div className="flex items-center gap-4">
-        <span className="text-xs tracking-wide text-app-subtle">Room</span>
-        <span className="rounded-md bg-slate-900 px-2 py-1 text-xs font-medium text-app-text">{roomId}</span>
+    <header className="flex w-full flex-col gap-2 border-b border-app-border bg-zinc-950 px-3 py-2 lg:flex-row lg:items-center lg:justify-between lg:px-5">
+      <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
+        <span className="hidden text-xs tracking-wide text-app-subtle sm:inline">Room</span>
+        <span className="max-w-[110px] truncate rounded-md bg-slate-900 px-2 py-1 text-xs font-medium text-app-text sm:max-w-none">{roomId}</span>
 
         {/* Language Selector */}
         <div className="relative group">
           <button
-            className="flex items-center gap-1.5 rounded-md border border-app-border bg-slate-900/60 px-3 py-1.5 text-xs font-medium text-app-text transition hover:bg-slate-800"
+            className="flex shrink-0 items-center gap-1.5 rounded-md border border-app-border bg-slate-900/60 px-2.5 py-1.5 text-xs font-medium text-app-text transition hover:bg-slate-800 sm:px-3"
             title="Select language"
           >
-            <span>{languages.find((l) => l.id === language)?.label || 'Language'}</span>
+            <span className="hidden sm:inline">{languages.find((l) => l.id === language)?.label || 'Language'}</span>
+            <span className="sm:hidden">{language?.toUpperCase?.() || 'Lang'}</span>
             <ChevronDown size={14} />
           </button>
 
@@ -52,22 +67,59 @@ export default function TopBar({ roomId, users, language, onLanguageChange, onIn
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex w-full flex-wrap items-center gap-2 sm:gap-2.5 lg:w-auto lg:justify-end">
+        <button
+          type="button"
+          onClick={onRunCode}
+          disabled={isCompiling}
+          className="shrink-0 whitespace-nowrap rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-70"
+        >
+          {isCompiling ? 'Compiling...' : 'Run'}
+        </button>
+        <span
+          className="inline-flex h-7 shrink-0 items-center rounded-md border border-app-border bg-slate-900/70 px-2.5 text-xs font-medium text-cyan-300"
+          title="Current editor"
+        >
+          {userName || 'You'}
+        </span>
         <button
           type="button"
           onClick={onInvite}
-          className="rounded-md border border-app-border px-3 py-1.5 text-xs text-app-text transition hover:bg-slate-800/70"
+          className="shrink-0 whitespace-nowrap rounded-md border border-app-border px-3 py-1.5 text-xs text-app-text transition hover:bg-slate-800/70"
         >
           Invite
         </button>
         <button
           type="button"
-          onClick={onExport}
-          className="rounded-md bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-900 transition hover:bg-white"
+          onClick={onSaveSnippet}
+          className="shrink-0 whitespace-nowrap rounded-md bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-900 transition hover:bg-white"
         >
-          Export to Cloud
+          Save to S3
         </button>
-        <PresenceAvatars users={users} />
+        <input
+          type="text"
+          placeholder="Snippet ID"
+          value={snippetIdInput}
+          onChange={(event) => onSnippetIdInputChange(event.target.value)}
+          className="h-7 w-24 shrink-0 rounded-md border border-app-border bg-slate-900/70 px-2 text-xs text-app-text outline-none focus:border-cyan-500 sm:w-28"
+        />
+        <button
+          type="button"
+          onClick={onLoadSnippet}
+          className="shrink-0 whitespace-nowrap rounded-md bg-sky-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-sky-500"
+        >
+          Load
+        </button>
+        <button
+          type="button"
+          onClick={onDeleteSnippet}
+          className="shrink-0 whitespace-nowrap rounded-md bg-rose-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-rose-500"
+        >
+          Delete
+        </button>
+        <div className="shrink-0">
+          <PresenceAvatars users={users} />
+        </div>
       </div>
     </header>
   );
