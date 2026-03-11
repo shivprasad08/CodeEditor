@@ -2,15 +2,15 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://3.110.181.166:4000/api/:path*"
+      "destination": "http://3.110.181.166:4000/api/:path*"
     },
     {
       "source": "/snippets/:path*",
-      "destination": "https://3.110.181.166:4000/snippets/:path*"
+      "destination": "http://3.110.181.166:4000/snippets/:path*"
     },
     {
       "source": "/socket.io/:path*",
-      "destination": "https://3.110.181.166:4000/socket.io/:path*"
+      "destination": "http://3.110.181.166:4000/socket.io/:path*"
     }
   ]
 }
