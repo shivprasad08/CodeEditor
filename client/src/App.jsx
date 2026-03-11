@@ -52,8 +52,10 @@ const apiCandidates = (isHostedDeployment()
 
 async function fetchWithFallback(path, options) {
   let lastError = null;
+  const candidatesToTry = isHostedDeployment() ? [apiCandidates[0]] : apiCandidates;
 
-  for (const base of apiCandidates) {
+  for (const base of candidatesToTry) {
+    if (!base) continue;
     try {
       const response = await fetch(`${base}${path}`, options);
       if (response.ok) {
@@ -61,11 +63,16 @@ async function fetchWithFallback(path, options) {
       }
 
       // For 404 in one deployment topology, try next candidate.
-      if (response.status !== 404) {
+      // For hosted, stop on any non-OK response except timeout
+      if (isHostedDeployment() || response.status !== 404) {
         return { response, base };
       }
     } catch (error) {
       lastError = error;
+      // For hosted, don't try fallbacks
+      if (isHostedDeployment()) {
+        throw error;
+      }
     }
   }
 

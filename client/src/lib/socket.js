@@ -44,6 +44,8 @@ const fallbackCandidates = (isHostedDeployment()
 
 const SOCKET_URL = fallbackCandidates[0];
 
+let currentCandidateIndex = 0;
+
 export const socket = io(SOCKET_URL, {
   autoConnect: true,
   timeout: 2500,
@@ -56,13 +58,19 @@ export const socket = io(SOCKET_URL, {
   reconnectionDelay: 600,
 });
 
-socket.on('connect_error', () => {
-  const current = socket.io.uri;
-  const currentIndex = fallbackCandidates.indexOf(current);
-  const nextIndex = currentIndex >= 0 ? currentIndex + 1 : 1;
+// Only apply fallback logic for local deployments
+if (!isHostedDeployment()) {
+  socket.on('connect_error', () => {
+    if (isHostedDeployment()) {
+      return; // Never fall back on hosted
+    }
 
-  if (nextIndex < fallbackCandidates.length) {
-    socket.io.uri = fallbackCandidates[nextIndex];
-    socket.connect();
-  }
-});
+    currentCandidateIndex = Math.min(currentCandidateIndex + 1, fallbackCandidates.length - 1);
+    const nextUrl = fallbackCandidates[currentCandidateIndex];
+
+    if (nextUrl && nextUrl !== SOCKET_URL) {
+      socket.io.uri = nextUrl;
+      socket.connect();
+    }
+  });
+}
