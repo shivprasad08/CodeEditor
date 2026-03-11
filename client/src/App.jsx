@@ -8,7 +8,31 @@ import { languageTemplates } from './lib/languageTemplates';
 
 const REMOTE_CURSOR_IDLE_MS = 1800;
 
+function isLocalOrIpHost(host) {
+  return host === 'localhost' || host === '127.0.0.1' || /^\d+\.\d+\.\d+\.\d+$/.test(host);
+}
+
+function getRuntimeApiBase() {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+  const host = window.location.hostname;
+  if (!host) {
+    return null;
+  }
+
+  if (isLocalOrIpHost(host)) {
+    return `${protocol}//${host}:4000`;
+  }
+
+  // Hosted frontend (e.g. Vercel): use same-origin + rewrite/proxy rules.
+  return window.location.origin;
+}
+
 const apiCandidates = [
+  getRuntimeApiBase(),
   import.meta.env.VITE_API_URL,
   import.meta.env.VITE_SERVER_URL,
   'http://localhost:4000',
