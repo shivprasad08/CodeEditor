@@ -31,20 +31,21 @@ function isHostedDeployment() {
   return !isLocalOrIpHost(window.location.hostname);
 }
 
-const fallbackCandidates = (isHostedDeployment()
-  ? [window.location.origin]
+// For hosted deployments, use ONLY same-origin (no fallbacks)
+// For local deployments, use multiple candidates with fallback
+const SOCKET_URL = isHostedDeployment()
+  ? window.location.origin
+  : getRuntimeSocketBase() || 'http://localhost:4000';
+
+const fallbackCandidates = isHostedDeployment()
+  ? [SOCKET_URL]  // No fallbacks for hosted
   : [
       getRuntimeSocketBase(),
       import.meta.env.VITE_SOCKET_URL,
       import.meta.env.VITE_SERVER_URL,
       'http://localhost:4000',
       'http://localhost:5000',
-    ]
-).filter(Boolean);
-
-const SOCKET_URL = fallbackCandidates[0];
-
-let currentCandidateIndex = 0;
+    ].filter(Boolean);
 
 export const socket = io(SOCKET_URL, {
   autoConnect: true,
@@ -58,19 +59,32 @@ export const socket = io(SOCKET_URL, {
   reconnectionDelay: 600,
 });
 
-// Only apply fallback logic for local deployments
+// ONLY enable fallback logic for LOCAL deployments
+// Hosted deployments must NEVER fall back
 if (!isHostedDeployment()) {
-  socket.on('connect_error', () => {
-    if (isHostedDeployment()) {
+  let fallbackAttempt = 0;
+
+  socket.on('connect_error', (error) => {
+    // Verify we're still in local mode (double-check)
+    const nowHosted = !isLocalOrIpHost(window.location.hostname);
+    if (nowHosted) {
       return; // Never fall back on hosted
     }
 
-    currentCandidateIndex = Math.min(currentCandidateIndex + 1, fallbackCandidates.length - 1);
-    const nextUrl = fallbackCandidates[currentCandidateIndex];
-
-    if (nextUrl && nextUrl !== SOCKET_URL) {
-      socket.io.uri = nextUrl;
-      socket.connect();
+    // Try next candidate
+    if (fallbackAttempt < fallbackCandidates.length - 1) {
+      fallbackAttempt++;
+      const nextUrl = fallbackCandidates[fallbackAttempt];
+      if (nextUrl) {
+        console.log(`[Socket] Fallback attempt ${fallbackAttempt}: ${nextUrl}`);
+        socket.io.uri = nextUrl;
+        socket.connect();
+      }
     }
+  });
+
+  // Reset fallback counter on successful connection
+  socket.on('connect', () => {
+    fallbackAttempt = 0;
   });
 }

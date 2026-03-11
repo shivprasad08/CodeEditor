@@ -52,9 +52,11 @@ const apiCandidates = (isHostedDeployment()
 
 async function fetchWithFallback(path, options) {
   let lastError = null;
-  const candidatesToTry = isHostedDeployment() ? [apiCandidates[0]] : apiCandidates;
+  
+  // For hosted deployments, only try the primary endpoint (Vercel rewrite)
+  const endpointsToTry = isHostedDeployment() ? [apiCandidates[0]] : apiCandidates;
 
-  for (const base of candidatesToTry) {
+  for (const base of endpointsToTry) {
     if (!base) continue;
     try {
       const response = await fetch(`${base}${path}`, options);
@@ -62,24 +64,29 @@ async function fetchWithFallback(path, options) {
         return { response, base };
       }
 
-      // For 404 in one deployment topology, try next candidate.
-      // For hosted, stop on any non-OK response except timeout
-      if (isHostedDeployment() || response.status !== 404) {
+      // If hosted, fail immediately (don't try fallbacks)
+      if (isHostedDeployment()) {
+        return { response, base };
+      }
+
+      // For local, only continue on 404 (other errors might be worth retrying elsewhere)
+      if (response.status !== 404) {
         return { response, base };
       }
     } catch (error) {
       lastError = error;
-      // For hosted, don't try fallbacks
+      
+      // If hosted, throw immediately (don't try fallbacks)
       if (isHostedDeployment()) {
         throw error;
       }
     }
   }
 
+  // No candidates worked
   if (lastError) {
     throw lastError;
   }
-
   throw new Error('No API endpoint responded');
 }
 
