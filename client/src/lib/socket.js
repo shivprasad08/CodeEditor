@@ -23,16 +23,6 @@ function getRuntimeSocketBase() {
   return window.location.origin;
 }
 
-const fallbackCandidates = [
-  getRuntimeSocketBase(),
-  import.meta.env.VITE_SOCKET_URL,
-  import.meta.env.VITE_SERVER_URL,
-  'http://localhost:4000',
-  'http://localhost:5000',
-].filter(Boolean);
-
-const SOCKET_URL = fallbackCandidates[0];
-
 function isHostedDeployment() {
   if (typeof window === 'undefined') {
     return false;
@@ -40,6 +30,19 @@ function isHostedDeployment() {
 
   return !isLocalOrIpHost(window.location.hostname);
 }
+
+const fallbackCandidates = (isHostedDeployment()
+  ? [window.location.origin]
+  : [
+      getRuntimeSocketBase(),
+      import.meta.env.VITE_SOCKET_URL,
+      import.meta.env.VITE_SERVER_URL,
+      'http://localhost:4000',
+      'http://localhost:5000',
+    ]
+).filter(Boolean);
+
+const SOCKET_URL = fallbackCandidates[0];
 
 export const socket = io(SOCKET_URL, {
   autoConnect: true,

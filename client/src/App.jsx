@@ -12,6 +12,14 @@ function isLocalOrIpHost(host) {
   return host === 'localhost' || host === '127.0.0.1' || /^\d+\.\d+\.\d+\.\d+$/.test(host);
 }
 
+function isHostedDeployment() {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  return !isLocalOrIpHost(window.location.hostname);
+}
+
 function getRuntimeApiBase() {
   if (typeof window === 'undefined') {
     return null;
@@ -31,13 +39,16 @@ function getRuntimeApiBase() {
   return window.location.origin;
 }
 
-const apiCandidates = [
-  getRuntimeApiBase(),
-  import.meta.env.VITE_API_URL,
-  import.meta.env.VITE_SERVER_URL,
-  'http://localhost:4000',
-  'http://localhost:3000',
-].filter(Boolean);
+const apiCandidates = (isHostedDeployment()
+  ? [window.location.origin]
+  : [
+      getRuntimeApiBase(),
+      import.meta.env.VITE_API_URL,
+      import.meta.env.VITE_SERVER_URL,
+      'http://localhost:4000',
+      'http://localhost:3000',
+    ]
+).filter(Boolean);
 
 async function fetchWithFallback(path, options) {
   let lastError = null;
