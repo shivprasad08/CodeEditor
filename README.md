@@ -7,6 +7,7 @@ Updated architecture now follows:
 - submit API (`/api/submit`) to push code execution jobs to an internal queue
 - worker pool processing queued jobs
 - room-scoped WebSocket fan-out for compile status/output
+- MongoDB-backed snippet storage and saved documents
 
 ## Multi-Service (Docker)
 The repo now includes `docker-compose.yml` for a split backend:
@@ -35,7 +36,7 @@ docker compose down
 - Monaco Editor
 - Socket.io (client + server)
 - Node.js + Express
-- AWS SDK v3 (S3 upload hook)
+- MongoDB (Mongoose)
 
 ## Quick Start
 1. Install dependencies:
@@ -46,7 +47,7 @@ docker compose down
    ```
 2. Configure backend env:
    - Copy `server/.env.example` to `server/.env`
-   - Set AWS and app variables
+   - Set MongoDB and app variables
 3. Run both apps:
    ```bash
    npm run dev

@@ -1,4 +1,13 @@
 services:
+  mongo:
+    image: mongo:7
+    container_name: collab-mongo
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo-data:/data/db
+
   redis:
     image: redis:7-alpine
     container_name: collab-redis
@@ -32,8 +41,11 @@ services:
       CLIENT_ORIGIN: http://localhost:5173
       REDIS_URL: redis://redis:6379
       REDIS_QUEUE_NAME: problems
+      MONGO_URI: mongodb://mongo:27017/codeeditor
+      MONGO_DB_NAME: codeeditor
     depends_on:
       - redis
+      - mongo
     ports:
       - '3000:3000'
 
@@ -70,3 +82,6 @@ services:
     depends_on:
       - websocket-server
       - submit-api
+
+volumes:
+  mongo-data:

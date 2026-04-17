@@ -179,7 +179,7 @@ export default function App() {
       });
     };
 
-    const handleCursorChange = ({ user, position, selection }) => {
+    const handleRemoteCursorChange = ({ user, position, selection }) => {
       if (!user?.id || !position) {
         return;
       }
@@ -251,7 +251,7 @@ export default function App() {
 
     socket.on('document-change', handleDocumentChange);
     socket.on('room-users', handleRoomUsers);
-    socket.on('cursor-change', handleCursorChange);
+    socket.on('cursor-change', handleRemoteCursorChange);
     socket.on('presence-snapshot', handlePresenceSnapshot);
     socket.on('cursor-remove', handleCursorRemove);
     socket.on('compile-status', handleCompileStatus);
@@ -260,7 +260,7 @@ export default function App() {
     return () => {
       socket.off('document-change', handleDocumentChange);
       socket.off('room-users', handleRoomUsers);
-      socket.off('cursor-change', handleCursorChange);
+      socket.off('cursor-change', handleRemoteCursorChange);
       socket.off('presence-snapshot', handlePresenceSnapshot);
       socket.off('cursor-remove', handleCursorRemove);
       socket.off('compile-status', handleCompileStatus);
@@ -328,7 +328,7 @@ export default function App() {
     });
   };
 
-  const handleCursorChange = ({ position, selection }) => {
+  const emitCursorChange = ({ position, selection }) => {
     if (Date.now() < suppressCursorBroadcastUntilRef.current) {
       return;
     }
@@ -416,7 +416,7 @@ export default function App() {
       return;
     }
 
-    if (!window.confirm(`Are you sure you want to delete ${idToDelete} from S3?`)) {
+    if (!window.confirm(`Are you sure you want to delete ${idToDelete} from MongoDB?`)) {
       return;
     }
 
@@ -507,7 +507,7 @@ export default function App() {
               <EditorPane
                 value={code}
                 onChange={handleCodeChange}
-                onCursorChange={handleCursorChange}
+                onCursorChange={emitCursorChange}
                 remoteCursors={Object.values(remoteCursors)}
                 localUserId={localUserId}
                 language={language}

@@ -1,10 +1,20 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cors from 'cors';
 import { createServer } from 'node:http';
 import { Server } from 'socket.io';
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { CompilePipeline } from './compilePipeline.js';
+import { SavedDocument, Snippet, ensureMongoConnection } from './lib/mongoStore.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+if (!process.env.MONGO_URI && !process.env.MONGODB_URI && !process.env.MONGO_URL) {
+  dotenv.config({ path: path.resolve(__dirname, '../.env.example') });
+}
 
 const app = express();
 const httpServer = createServer(app);
@@ -24,16 +34,6 @@ app.use(
   })
 );
 app.use(express.json({ limit: '1mb' }));
-
-const s3 = new S3Client({
-  region: process.env.AWS_REGION,
-  credentials: process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
-    ? {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-      }
-    : undefined,
-});
 
 function getExtension(language) {
   switch (language) {
@@ -333,68 +333,62 @@ app.post('/api/rooms/validate', (req, res) => {
 app.post('/snippets', async (req, res) => {
   const { code, language } = req.body || {};
 
-  if (!process.env.AWS_S3_BUCKET_NAME) {
-    return res.status(500).json({ error: 'Missing AWS_S3_BUCKET_NAME environment variable.' });
-  }
-
   try {
-    const snippetId = `snippet-${Date.now()}${getExtension(language)}`;
-    const command = new PutObjectCommand({
-      Bucket: process.env.AWS_S3_BUCKET_NAME,
-      Key: snippetId,
-      Body: code || '',
-      ContentType: 'text/plain',
-    });
+    await ensureMongoConnection();
 
-    await s3.send(command);
+    const snippetId = `snippet-${Date.now()}${getExtension(language)}`;
+    await Snippet.findOneAndUpdate(
+      { snippetId },
+      {
+        snippetId,
+        code: typeof code === 'string' ? code : '',
+        language: typeof language === 'string' ? language : 'javascript',
+      },
+      {
+        upsert: true,
+        new: true,
+        setDefaultsOnInsert: true,
+      }
+    );
+
     return res.status(200).json({ snippetId });
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to save snippet' });
+    return res.status(500).json({ error: error.message || 'Failed to save snippet' });
   }
 });
 
 app.get('/snippets/:id', async (req, res) => {
   const { id } = req.params;
 
-  if (!process.env.AWS_S3_BUCKET_NAME) {
-    return res.status(500).json({ error: 'Missing AWS_S3_BUCKET_NAME environment variable.' });
-  }
-
   try {
-    const command = new GetObjectCommand({
-      Bucket: process.env.AWS_S3_BUCKET_NAME,
-      Key: id,
-    });
+    await ensureMongoConnection();
 
-    const response = await s3.send(command);
-    const code = await response.Body?.transformToString();
+    const snippet = await Snippet.findOne({ snippetId: id }).lean();
+
+    if (!snippet) {
+      return res.status(404).json({ error: 'Snippet not found' });
+    }
 
     return res.status(200).json({
-      code,
-      language: getLanguageFromSnippetId(id),
+      code: snippet.code || '',
+      language: snippet.language || getLanguageFromSnippetId(id),
     });
   } catch (error) {
-    return res.status(404).json({ error: 'Snippet not found' });
+    return res.status(500).json({ error: error.message || 'Failed to load snippet' });
   }
 });
 
 app.delete('/snippets/:id', async (req, res) => {
   const { id } = req.params;
 
-  if (!process.env.AWS_S3_BUCKET_NAME) {
-    return res.status(500).json({ error: 'Missing AWS_S3_BUCKET_NAME environment variable.' });
-  }
-
   try {
-    const command = new DeleteObjectCommand({
-      Bucket: process.env.AWS_S3_BUCKET_NAME,
-      Key: id,
-    });
+    await ensureMongoConnection();
 
-    await s3.send(command);
+    await Snippet.deleteOne({ snippetId: id });
+
     return res.status(200).json({ message: 'Snippet deleted successfully' });
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to delete snippet' });
+    return res.status(500).json({ error: error.message || 'Failed to delete snippet' });
   }
 });
 
@@ -402,31 +396,35 @@ app.delete('/snippets/:id', async (req, res) => {
 app.post('/api/save-to-cloud', async (req, res) => {
   const { roomId, content, fileName } = req.body || {};
 
-  if (!process.env.AWS_S3_BUCKET) {
-    return res.status(500).json({
-      message: 'Missing AWS_S3_BUCKET environment variable.',
-    });
-  }
-
   const resolvedRoom = roomId || 'default-room';
   const resolvedFile = fileName || `room-${resolvedRoom}-${Date.now()}.txt`;
 
-  const command = new PutObjectCommand({
-    Bucket: process.env.AWS_S3_BUCKET,
-    Key: `rooms/${resolvedRoom}/${resolvedFile}`,
-    Body: content || '',
-    ContentType: 'text/plain',
-  });
-
   try {
-    await s3.send(command);
+    await ensureMongoConnection();
+
+    const key = `rooms/${resolvedRoom}/${resolvedFile}`;
+    await SavedDocument.findOneAndUpdate(
+      { key },
+      {
+        key,
+        roomId: resolvedRoom,
+        fileName: resolvedFile,
+        content: typeof content === 'string' ? content : '',
+      },
+      {
+        upsert: true,
+        new: true,
+        setDefaultsOnInsert: true,
+      }
+    );
+
     return res.status(200).json({
-      message: 'Saved to cloud storage.',
-      key: `rooms/${resolvedRoom}/${resolvedFile}`,
+      message: 'Saved to MongoDB.',
+      key,
     });
   } catch (error) {
     return res.status(500).json({
-      message: 'Failed to save file to S3.',
+      message: 'Failed to save file to MongoDB.',
       error: error.message,
     });
   }
