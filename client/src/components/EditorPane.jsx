@@ -2,6 +2,7 @@ import Editor from '@monaco-editor/react';
 import { useEffect, useRef } from 'react';
 
 const injectedStyles = new Set();
+const CURSOR_FALLBACK_COLOR = '#06b6d4';
 
 function sanitizeId(id = '') {
   return String(id).replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -16,6 +17,7 @@ function escapeCssContent(value = '') {
 function ensureUserCursorStyle(user) {
   const safeId = sanitizeId(user.id);
   const styleId = `remote-cursor-${safeId}`;
+  const cursorColor = user?.color || CURSOR_FALLBACK_COLOR;
 
   if (injectedStyles.has(styleId)) {
     return;
@@ -25,7 +27,7 @@ function ensureUserCursorStyle(user) {
   style.id = styleId;
   style.textContent = `
     .remote-caret-${safeId} {
-      border-left: 2px solid ${user.color};
+      border-left: 2px solid ${cursorColor};
       margin-left: -1px;
       height: 1.3em;
     }
@@ -44,7 +46,7 @@ function ensureUserCursorStyle(user) {
       justify-content: center;
       max-width: 240px;
       padding: 4px 10px;
-      background: ${user.color};
+      background: ${cursorColor};
       color: #ffffff;
       font-size: 12px;
       font-weight: 700;
@@ -78,6 +80,7 @@ function toRgba(hexColor, alpha) {
 function ensureUserSelectionStyle(user) {
   const safeId = sanitizeId(user.id);
   const styleId = `remote-selection-${safeId}`;
+  const cursorColor = user?.color || CURSOR_FALLBACK_COLOR;
 
   if (injectedStyles.has(styleId)) {
     return;
@@ -87,8 +90,8 @@ function ensureUserSelectionStyle(user) {
   style.id = styleId;
   style.textContent = `
     .remote-selection-${safeId} {
-      background-color: ${toRgba(user.color, 0.24)};
-      border-bottom: 1px solid ${toRgba(user.color, 0.8)};
+      background-color: ${toRgba(cursorColor, 0.24)};
+      border-bottom: 1px solid ${toRgba(cursorColor, 0.8)};
     }
   `;
 
@@ -109,11 +112,14 @@ export default function EditorPane({ value, onChange, onCursorChange, remoteCurs
     const monaco = monacoRef.current;
     const decorations = remoteCursors
       .filter((cursor) => {
-        if (!cursor?.user?.id || !cursor?.position || !localUserId) {
+        if (!cursor?.user?.id || !cursor?.position) {
           return false;
         }
-        // Double-check: never render local user's cursor
-        return cursor.user.id !== localUserId;
+        // If local user id is known, avoid rendering the local cursor.
+        if (localUserId) {
+          return cursor.user.id !== localUserId;
+        }
+        return true;
       })
       .flatMap((cursor) => {
         ensureUserCursorStyle(cursor.user);

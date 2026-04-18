@@ -7,6 +7,8 @@ import { socket } from './lib/socket';
 import { languageTemplates } from './lib/languageTemplates';
 
 const REMOTE_CURSOR_IDLE_MS = 1800;
+const MIN_SECTION_HEIGHT = 80;
+const SPLITTER_HEIGHT = 5;
 
 function isLocalOrIpHost(host) {
   return host === 'localhost' || host === '127.0.0.1' || /^\d+\.\d+\.\d+\.\d+$/.test(host);
@@ -104,7 +106,12 @@ export default function App() {
   const [isCompiling, setIsCompiling] = useState(false);
   const [snippetIdInput, setSnippetIdInput] = useState('');
   const [snippetIdLoaded, setSnippetIdLoaded] = useState('');
+  const [ioPanelHeight, setIoPanelHeight] = useState(220);
   const isRemoteUpdate = useRef(false);
+  const contentRef = useRef(null);
+  const isDraggingSplitterRef = useRef(false);
+  const dragStartYRef = useRef(0);
+  const dragStartIoHeightRef = useRef(220);
   const suppressCursorBroadcastUntilRef = useRef(0);
   const lastCursorEmitRef = useRef(0);
   const localUserIdRef = useRef('');
@@ -112,36 +119,62 @@ export default function App() {
   const previousTemplateRef = useRef(languageTemplates.javascript);
 
   const handleJoinRoom = ({ username, roomId: room }) => {
-    // Set up join handlers FIRST, before emitting
+    const trimmedName = username?.trim() || '';
+    const normalizedRoom = room?.trim().toUpperCase() || '';
+
+    if (!trimmedName || !normalizedRoom) {
+      setJoinError('Name and room ID are required.');
+      return;
+    }
+
+    setJoinError('');
+
+    // Set up join handlers first, then emit only when socket is connected.
+    const emitJoin = () => {
+      socket.emit('join-room', {
+        roomId: normalizedRoom,
+        name: trimmedName,
+      });
+    };
+
     const handleJoinSuccess = ({ userId }) => {
+      window.clearTimeout(joinTimeout);
       localUserIdRef.current = userId;
       setLocalUserId(userId);
+
+      setUserName(trimmedName);
+      setRoomId(normalizedRoom);
+
+      // Initialize with JavaScript template for first load.
+      setCode(languageTemplates.javascript);
+      previousTemplateRef.current = languageTemplates.javascript;
+
+      socket.off('connect', emitJoin);
+      socket.off('join-error', handleJoinError);
     };
 
     const handleJoinError = ({ message }) => {
-      setJoinError(message);
-      // Cleanup on error
+      window.clearTimeout(joinTimeout);
+      setJoinError(message || 'Failed to join room.');
+      socket.off('connect', emitJoin);
       socket.off('join-success', handleJoinSuccess);
       socket.off('join-error', handleJoinError);
     };
 
-    // Register handlers before emitting
+    const joinTimeout = window.setTimeout(() => {
+      handleJoinError({ message: 'Unable to connect to realtime server.' });
+    }, 7000);
+
     socket.once('join-success', handleJoinSuccess);
     socket.once('join-error', handleJoinError);
 
-    // NOW emit join-room
-    socket.emit('join-room', {
-      roomId: room,
-      name: username,
-    });
+    if (socket.connected) {
+      emitJoin();
+      return;
+    }
 
-    setUserName(username);
-    setRoomId(room);
-    setJoinError('');
-    
-    // Initialize with JavaScript template
-    setCode(languageTemplates.javascript);
-    previousTemplateRef.current = languageTemplates.javascript;
+    socket.connect();
+    socket.once('connect', emitJoin);
   };
 
   // Keep localUserIdRef in sync for closure access
@@ -290,6 +323,67 @@ export default function App() {
 
     return () => {
       window.clearInterval(intervalId);
+    };
+  }, []);
+
+  useEffect(() => {
+    const clampIoPanelHeight = (value) => {
+      if (!contentRef.current) {
+        return value;
+      }
+
+      const totalHeight = contentRef.current.clientHeight;
+      const maxIoHeight = Math.max(
+        MIN_SECTION_HEIGHT,
+        totalHeight - MIN_SECTION_HEIGHT - SPLITTER_HEIGHT
+      );
+
+      return Math.min(maxIoHeight, Math.max(MIN_SECTION_HEIGHT, value));
+    };
+
+    const handleMouseMove = (event) => {
+      if (!isDraggingSplitterRef.current) {
+        return;
+      }
+
+      const deltaY = event.clientY - dragStartYRef.current;
+      const nextIoHeight = dragStartIoHeightRef.current - deltaY;
+      setIoPanelHeight(clampIoPanelHeight(Math.round(nextIoHeight)));
+    };
+
+    const stopDragging = () => {
+      isDraggingSplitterRef.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    const handleWindowResize = () => {
+      setIoPanelHeight((prev) => clampIoPanelHeight(prev));
+    };
+
+    const resizeObserver = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => {
+          setIoPanelHeight((prev) => clampIoPanelHeight(prev));
+        })
+      : null;
+
+    if (resizeObserver && contentRef.current) {
+      resizeObserver.observe(contentRef.current);
+    }
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', stopDragging);
+    window.addEventListener('resize', handleWindowResize);
+
+    handleWindowResize();
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', stopDragging);
+      window.removeEventListener('resize', handleWindowResize);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
     };
   }, []);
 
@@ -477,14 +571,14 @@ export default function App() {
 
   // Show join modal if not in a room
   if (!roomId || !userName) {
-    return <JoinModal onJoin={handleJoinRoom} />;
+    return <JoinModal onJoin={handleJoinRoom} externalError={joinError} />;
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-950 text-app-text">
+    <div className="flex h-[100svh] min-h-[100svh] w-full overflow-hidden bg-slate-950 text-app-text">
       <Sidebar />
 
-      <main className="flex min-w-0 flex-1 flex-col">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col">
         <TopBar 
           roomId={roomId} 
           users={users} 
@@ -501,9 +595,9 @@ export default function App() {
           isCompiling={isCompiling}
         />
 
-        <div className="relative flex-1 p-2 sm:p-4">
-          <div className="grid h-full w-full grid-rows-[minmax(0,1fr)_240px] gap-2 overflow-hidden sm:grid-rows-[1fr_220px] sm:gap-3">
-            <div className="overflow-hidden rounded-xl border border-app-border bg-app-bg shadow-panel">
+        <div ref={contentRef} className="relative flex-1 min-h-0 p-1.5 sm:p-4">
+          <div className="flex h-full w-full min-h-0 flex-col overflow-hidden">
+            <div className="min-h-[80px] flex-1 overflow-hidden rounded-xl border border-app-border bg-app-bg shadow-panel">
               <EditorPane
                 value={code}
                 onChange={handleCodeChange}
@@ -514,37 +608,58 @@ export default function App() {
               />
             </div>
 
-            <div className="grid grid-cols-1 gap-2 overflow-hidden rounded-xl border border-app-border bg-app-bg p-2 shadow-panel sm:grid-cols-[260px_1fr] sm:gap-3 sm:p-3">
-              <div className="flex min-h-0 flex-col gap-2">
-                <div className="text-xs font-medium uppercase tracking-wide text-app-subtle">Input</div>
-                <textarea
-                  value={compileInput}
-                  onChange={(event) => setCompileInput(event.target.value)}
-                  placeholder="stdin input..."
-                  className="h-24 min-h-0 w-full resize-none rounded-md border border-app-border bg-slate-900/70 p-2 text-xs text-app-text outline-none focus:border-cyan-500 sm:h-full"
-                />
-              </div>
+            <div
+              role="separator"
+              aria-label="Resize input output panel"
+              onMouseDown={(event) => {
+                event.preventDefault();
+                isDraggingSplitterRef.current = true;
+                dragStartYRef.current = event.clientY;
+                dragStartIoHeightRef.current = ioPanelHeight;
+                document.body.style.cursor = 'row-resize';
+                document.body.style.userSelect = 'none';
+              }}
+              className="group relative z-10 h-[5px] shrink-0 cursor-row-resize bg-slate-900/80"
+            >
+              <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-slate-600/80 transition-colors group-hover:bg-cyan-400/80" />
+            </div>
 
-              <div className="flex min-h-0 flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <div className="text-xs font-medium uppercase tracking-wide text-app-subtle">Output</div>
-                  <button
-                    onClick={() => setCompileOutput([])}
-                    className="text-xs text-app-subtle transition hover:text-app-text"
-                  >
-                    Clear
-                  </button>
+            <div
+              style={{ height: `${ioPanelHeight}px` }}
+              className="min-h-[80px] shrink-0 overflow-y-auto overflow-x-hidden rounded-xl border border-app-border bg-app-bg p-2 shadow-panel sm:p-3"
+            >
+              <div className="grid h-full min-h-0 grid-cols-1 grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-2 md:grid-cols-[260px_minmax(0,1fr)] md:grid-rows-1 sm:gap-3">
+                <div className="flex min-h-0 flex-col gap-2">
+                  <div className="text-xs font-medium uppercase tracking-wide text-app-subtle">Input</div>
+                  <textarea
+                    value={compileInput}
+                    onChange={(event) => setCompileInput(event.target.value)}
+                    placeholder="stdin input..."
+                    className="min-h-0 flex-1 w-full resize-none overflow-auto rounded-md border border-app-border bg-slate-900/70 p-2 text-xs text-app-text outline-none focus:border-cyan-500"
+                  />
                 </div>
-                <div className="h-full min-h-0 overflow-auto rounded-md border border-app-border bg-slate-950 p-2 font-mono text-xs text-emerald-300">
-                  {compileOutput.length === 0 ? (
-                    <div className="text-app-subtle">No output yet. Click Run to execute.</div>
-                  ) : (
-                    compileOutput.map((line, index) => (
-                      <pre key={`${index}-${line.slice(0, 16)}`} className="mb-3 whitespace-pre-wrap">
-                        {line}
-                      </pre>
-                    ))
-                  )}
+
+                <div className="flex min-h-0 flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-medium uppercase tracking-wide text-app-subtle">Output</div>
+                    <button
+                      onClick={() => setCompileOutput([])}
+                      className="text-xs text-app-subtle transition hover:text-app-text"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  <div className="min-h-0 flex-1 overflow-auto rounded-md border border-app-border bg-slate-950 p-2 font-mono text-xs text-emerald-300">
+                    {compileOutput.length === 0 ? (
+                      <div className="text-app-subtle">No output yet. Click Run to execute.</div>
+                    ) : (
+                      compileOutput.map((line, index) => (
+                        <pre key={`${index}-${line.slice(0, 16)}`} className="mb-3 whitespace-pre-wrap">
+                          {line}
+                        </pre>
+                      ))
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

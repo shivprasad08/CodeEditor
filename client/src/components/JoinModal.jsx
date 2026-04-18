@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Copy } from 'lucide-react';
 import { generateRoomId, isValidRoomId } from '../lib/roomUtils';
 
-export default function JoinModal({ onJoin }) {
+export default function JoinModal({ onJoin, externalError = '' }) {
   const [tab, setTab] = useState('join'); // 'join' or 'create'
   const [username, setUsername] = useState('');
   const [roomId, setRoomId] = useState('');
@@ -57,16 +57,16 @@ export default function JoinModal({ onJoin }) {
   };
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-slate-950 to-zinc-950 p-4">
-      <div className="w-full max-w-md rounded-2xl border border-app-border bg-zinc-950 shadow-2xl">
+    <div className="flex min-h-[100svh] w-full items-center justify-center bg-gradient-to-br from-slate-950 to-zinc-950 p-3 sm:p-4">
+      <div className="max-h-[95svh] w-full max-w-md overflow-y-auto rounded-2xl border border-app-border bg-zinc-950 shadow-2xl">
         {/* Header */}
-        <div className="border-b border-app-border px-6 py-6">
-          <h1 className="text-2xl font-bold text-app-text">Code Together</h1>
+        <div className="border-b border-app-border px-5 py-5 sm:px-6 sm:py-6">
+          <h1 className="text-xl font-bold text-app-text sm:text-2xl">Code Together</h1>
           <p className="mt-1 text-sm text-app-subtle">Real-time collaborative editor</p>
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-5 sm:p-6">
           {/* Username input (always visible) */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-app-text mb-2">Your Name</label>
@@ -178,7 +178,7 @@ export default function JoinModal({ onJoin }) {
           )}
 
           {/* Error */}
-          {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
+          {(error || externalError) && <p className="mt-4 text-sm text-red-400">{error || externalError}</p>}
         </div>
       </div>
     </div>

@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import PresenceAvatars from './PresenceAvatars';
 import { ChevronDown } from 'lucide-react';
 
@@ -31,15 +32,33 @@ export default function TopBar({
   onRunCode,
   isCompiling,
 }) {
+  const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const handleDocumentClick = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setIsLanguageMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleDocumentClick);
+    return () => {
+      document.removeEventListener('mousedown', handleDocumentClick);
+    };
+  }, []);
+
   return (
-    <header className="flex w-full flex-col gap-2 border-b border-app-border bg-zinc-950 px-3 py-2 lg:flex-row lg:items-center lg:justify-between lg:px-5">
+    <header className="flex w-full flex-col gap-2 border-b border-app-border bg-zinc-950 px-2.5 py-2 sm:px-3 lg:flex-row lg:items-center lg:justify-between lg:px-5">
       <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
         <span className="hidden text-xs tracking-wide text-app-subtle sm:inline">Room</span>
         <span className="max-w-[110px] truncate rounded-md bg-slate-900 px-2 py-1 text-xs font-medium text-app-text sm:max-w-none">{roomId}</span>
 
         {/* Language Selector */}
-        <div className="relative group">
+        <div ref={menuRef} className="relative group">
           <button
+            type="button"
+            onClick={() => setIsLanguageMenuOpen((prev) => !prev)}
             className="flex shrink-0 items-center gap-1.5 rounded-md border border-app-border bg-slate-900/60 px-2.5 py-1.5 text-xs font-medium text-app-text transition hover:bg-slate-800 sm:px-3"
             title="Select language"
           >
@@ -49,11 +68,19 @@ export default function TopBar({
           </button>
 
           {/* Dropdown Menu */}
-          <div className="absolute left-0 top-full mt-1 hidden w-40 rounded-md border border-app-border bg-zinc-900 shadow-lg group-hover:block z-10">
+          <div
+            className={`absolute left-0 top-full z-20 mt-1 w-40 rounded-md border border-app-border bg-zinc-900 shadow-lg ${
+              isLanguageMenuOpen ? 'block' : 'hidden group-hover:block'
+            }`}
+          >
             {languages.map((lang) => (
               <button
                 key={lang.id}
-                onClick={() => onLanguageChange(lang.id)}
+                type="button"
+                onClick={() => {
+                  onLanguageChange(lang.id);
+                  setIsLanguageMenuOpen(false);
+                }}
                 className={`w-full px-3 py-2 text-left text-xs transition ${
                   language === lang.id
                     ? 'bg-cyan-600/20 text-cyan-400'
