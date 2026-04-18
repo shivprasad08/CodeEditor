@@ -99,7 +99,7 @@ function ensureUserSelectionStyle(user) {
   injectedStyles.add(styleId);
 }
 
-export default function EditorPane({ value, onChange, onCursorChange, remoteCursors = [], localUserId, language = 'javascript' }) {
+export default function EditorPane({ value, onChange, onCursorChange, remoteCursors = [], localUserId, language = 'javascript', theme = 'dark' }) {
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
   const decorationIdsRef = useRef([]);
@@ -168,13 +168,13 @@ export default function EditorPane({ value, onChange, onCursorChange, remoteCurs
   }, [remoteCursors, localUserId]);
 
   return (
-    <section className="h-full w-full bg-slate-950">
+    <section className="h-full w-full bg-app-bg">
       <Editor
         height="100%"
         language={language}
         value={value ?? ''}
         onChange={(nextValue) => onChange(nextValue || '')}
-        theme="vs-dark"
+        theme={theme === 'dark' ? 'vs-dark' : 'vs'}
         options={{
           minimap: { enabled: false },
           fontSize: 14,

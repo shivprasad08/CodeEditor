@@ -93,6 +93,18 @@ async function fetchWithFallback(path, options) {
 }
 
 export default function App() {
+  const [theme, setTheme] = useState(() => {
+    if (typeof window === 'undefined') {
+      return 'dark';
+    }
+
+    const savedTheme = window.localStorage.getItem('app-theme');
+    if (savedTheme === 'light' || savedTheme === 'dark') {
+      return savedTheme;
+    }
+
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
   const [roomId, setRoomId] = useState('');
   const [userName, setUserName] = useState('');
   const [code, setCode] = useState('');
@@ -117,6 +129,15 @@ export default function App() {
   const localUserIdRef = useRef('');
   const languageRef = useRef('javascript');
   const previousTemplateRef = useRef(languageTemplates.javascript);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    document.documentElement.setAttribute('data-theme', theme);
+    window.localStorage.setItem('app-theme', theme);
+  }, [theme]);
 
   const handleJoinRoom = ({ username, roomId: room }) => {
     const trimmedName = username?.trim() || '';
@@ -571,11 +592,18 @@ export default function App() {
 
   // Show join modal if not in a room
   if (!roomId || !userName) {
-    return <JoinModal onJoin={handleJoinRoom} externalError={joinError} />;
+    return (
+      <JoinModal
+        onJoin={handleJoinRoom}
+        externalError={joinError}
+        theme={theme}
+        onToggleTheme={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
+      />
+    );
   }
 
   return (
-    <div className="flex h-[100svh] min-h-[100svh] w-full overflow-hidden bg-slate-950 text-app-text">
+    <div className="flex h-[100svh] min-h-[100svh] w-full overflow-hidden bg-app-bg text-app-text">
       <Sidebar />
 
       <main className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -593,6 +621,8 @@ export default function App() {
           onSnippetIdInputChange={setSnippetIdInput}
           onRunCode={handleRunCode}
           isCompiling={isCompiling}
+          theme={theme}
+          onToggleTheme={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
         />
 
         <div ref={contentRef} className="relative flex-1 min-h-0 p-1.5 sm:p-4">
@@ -605,6 +635,7 @@ export default function App() {
                 remoteCursors={Object.values(remoteCursors)}
                 localUserId={localUserId}
                 language={language}
+                theme={theme}
               />
             </div>
 
@@ -619,9 +650,9 @@ export default function App() {
                 document.body.style.cursor = 'row-resize';
                 document.body.style.userSelect = 'none';
               }}
-              className="group relative z-10 h-[5px] shrink-0 cursor-row-resize bg-slate-900/80"
+              className="group relative z-10 h-[5px] shrink-0 cursor-row-resize bg-app-muted"
             >
-              <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-slate-600/80 transition-colors group-hover:bg-cyan-400/80" />
+              <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-app-border transition-colors group-hover:bg-cyan-400/80" />
             </div>
 
             <div
@@ -635,7 +666,7 @@ export default function App() {
                     value={compileInput}
                     onChange={(event) => setCompileInput(event.target.value)}
                     placeholder="stdin input..."
-                    className="min-h-0 flex-1 w-full resize-none overflow-auto rounded-md border border-app-border bg-slate-900/70 p-2 text-xs text-app-text outline-none focus:border-cyan-500"
+                    className="min-h-0 flex-1 w-full resize-none overflow-auto rounded-md border border-app-border bg-app-muted p-2 text-xs text-app-text outline-none focus:border-cyan-500"
                   />
                 </div>
 
@@ -649,7 +680,7 @@ export default function App() {
                       Clear
                     </button>
                   </div>
-                  <div className="min-h-0 flex-1 overflow-auto rounded-md border border-app-border bg-slate-950 p-2 font-mono text-xs text-emerald-300">
+                  <div className="min-h-0 flex-1 overflow-auto rounded-md border border-app-border bg-app-bg p-2 font-mono text-xs text-emerald-300">
                     {compileOutput.length === 0 ? (
                       <div className="text-app-subtle">No output yet. Click Run to execute.</div>
                     ) : (

@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Copy } from 'lucide-react';
+import { Copy, Moon, Sun } from 'lucide-react';
 import { generateRoomId, isValidRoomId } from '../lib/roomUtils';
 
-export default function JoinModal({ onJoin, externalError = '' }) {
+export default function JoinModal({ onJoin, externalError = '', theme = 'dark', onToggleTheme }) {
   const [tab, setTab] = useState('join'); // 'join' or 'create'
   const [username, setUsername] = useState('');
   const [roomId, setRoomId] = useState('');
@@ -57,12 +57,25 @@ export default function JoinModal({ onJoin, externalError = '' }) {
   };
 
   return (
-    <div className="flex min-h-[100svh] w-full items-center justify-center bg-gradient-to-br from-slate-950 to-zinc-950 p-3 sm:p-4">
-      <div className="max-h-[95svh] w-full max-w-md overflow-y-auto rounded-2xl border border-app-border bg-zinc-950 shadow-2xl">
+    <div className="flex min-h-[100svh] w-full items-center justify-center bg-gradient-to-br from-app-bg to-app-muted p-3 sm:p-4">
+      <div className="max-h-[95svh] w-full max-w-md overflow-y-auto rounded-2xl border border-app-border bg-app-panel shadow-2xl">
         {/* Header */}
         <div className="border-b border-app-border px-5 py-5 sm:px-6 sm:py-6">
-          <h1 className="text-xl font-bold text-app-text sm:text-2xl">Code Together</h1>
-          <p className="mt-1 text-sm text-app-subtle">Real-time collaborative editor</p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h1 className="text-xl font-bold text-app-text sm:text-2xl">Code Together</h1>
+              <p className="mt-1 text-sm text-app-subtle">Real-time collaborative editor</p>
+            </div>
+            <button
+              type="button"
+              onClick={onToggleTheme}
+              className="inline-flex h-8 items-center gap-1 rounded-md border border-app-border bg-app-muted px-2 text-xs font-medium text-app-text transition hover:opacity-90"
+              title="Toggle theme"
+            >
+              {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+              <span>{theme === 'dark' ? 'Light' : 'Dark'}</span>
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -78,12 +91,12 @@ export default function JoinModal({ onJoin, externalError = '' }) {
                 setUsername(e.target.value);
                 setError('');
               }}
-              className="w-full rounded-lg border border-app-border bg-slate-900/50 px-4 py-2 text-app-text placeholder-app-subtle focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+              className="w-full rounded-lg border border-app-border bg-app-muted px-4 py-2 text-app-text placeholder-app-subtle focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
             />
           </div>
 
           {/* Tabs */}
-          <div className="mb-6 flex gap-2 rounded-lg border border-app-border bg-slate-900/30 p-1">
+          <div className="mb-6 flex gap-2 rounded-lg border border-app-border bg-app-muted p-1">
             <button
               onClick={() => {
                 setTab('join');
@@ -91,7 +104,7 @@ export default function JoinModal({ onJoin, externalError = '' }) {
               }}
               className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition ${
                 tab === 'join'
-                  ? 'bg-slate-800 text-app-text shadow-sm'
+                  ? 'bg-app-muted text-app-text shadow-sm'
                   : 'text-app-subtle hover:text-app-text'
               }`}
             >
@@ -104,7 +117,7 @@ export default function JoinModal({ onJoin, externalError = '' }) {
               }}
               className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition ${
                 tab === 'create'
-                  ? 'bg-slate-800 text-app-text shadow-sm'
+                  ? 'bg-app-muted text-app-text shadow-sm'
                   : 'text-app-subtle hover:text-app-text'
               }`}
             >
@@ -125,7 +138,7 @@ export default function JoinModal({ onJoin, externalError = '' }) {
                     setRoomId(e.target.value.toUpperCase());
                     setError('');
                   }}
-                  className="w-full rounded-lg border border-app-border bg-slate-900/50 px-4 py-2 font-mono text-app-text placeholder-app-subtle focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+                  className="w-full rounded-lg border border-app-border bg-app-muted px-4 py-2 font-mono text-app-text placeholder-app-subtle focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
                 />
               </div>
               <button
@@ -149,11 +162,11 @@ export default function JoinModal({ onJoin, externalError = '' }) {
                 </button>
               ) : (
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between rounded-lg border border-app-border bg-slate-900/50 px-4 py-3">
+                  <div className="flex items-center justify-between rounded-lg border border-app-border bg-app-muted px-4 py-3">
                     <span className="font-mono text-lg font-bold text-app-text">{generatedId}</span>
                     <button
                       onClick={handleCopyId}
-                      className="rounded-md p-2 text-app-subtle hover:bg-slate-800 hover:text-app-text transition"
+                      className="rounded-md p-2 text-app-subtle transition hover:bg-app-muted hover:text-app-text"
                       title="Copy room ID"
                     >
                       <Copy size={16} />
@@ -168,7 +181,7 @@ export default function JoinModal({ onJoin, externalError = '' }) {
                   </button>
                   <button
                     onClick={handleGenerateRoomId}
-                    className="w-full rounded-lg border border-app-border px-4 py-2 text-sm font-medium text-app-text transition hover:bg-slate-800"
+                    className="w-full rounded-lg border border-app-border px-4 py-2 text-sm font-medium text-app-text transition hover:bg-app-muted"
                   >
                     Generate Different ID
                   </button>

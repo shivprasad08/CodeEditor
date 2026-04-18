@@ -6,6 +6,22 @@
 
 :root {
   color-scheme: dark;
+  --app-bg: 2 6 23;
+  --app-panel: 9 9 11;
+  --app-muted: 15 23 42;
+  --app-border: 31 41 55;
+  --app-text: 229 231 235;
+  --app-subtle: 148 163 184;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --app-bg: 248 250 252;
+  --app-panel: 255 255 255;
+  --app-muted: 241 245 249;
+  --app-border: 203 213 225;
+  --app-text: 15 23 42;
+  --app-subtle: 71 85 105;
 }
 
 html,
@@ -21,11 +37,43 @@ body,
 
 body {
   min-height: 100svh;
-  @apply m-0 bg-slate-950 text-app-text font-sans antialiased;
+  @apply m-0 bg-app-bg text-app-text font-sans antialiased;
+}
+
+body,
+body * {
+  transition-property: color, background-color, border-color, box-shadow, fill, stroke;
+  transition-duration: 180ms;
+  transition-timing-function: ease;
 }
 
 @supports (-webkit-touch-callout: none) {
   body {
     min-height: -webkit-fill-available;
   }
+}
+
+/* Ensure theme token utilities always reflect CSS variables at runtime. */
+.bg-app-bg {
+  background-color: rgb(var(--app-bg)) !important;
+}
+
+.bg-app-panel {
+  background-color: rgb(var(--app-panel)) !important;
+}
+
+.bg-app-muted {
+  background-color: rgb(var(--app-muted)) !important;
+}
+
+.text-app-text {
+  color: rgb(var(--app-text)) !important;
+}
+
+.text-app-subtle {
+  color: rgb(var(--app-subtle)) !important;
+}
+
+.border-app-border {
+  border-color: rgb(var(--app-border)) !important;
 }

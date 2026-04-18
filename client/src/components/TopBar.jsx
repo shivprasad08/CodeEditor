@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import PresenceAvatars from './PresenceAvatars';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Moon, Sun } from 'lucide-react';
 
 const languages = [
   { id: 'javascript', label: 'JavaScript' },
@@ -31,6 +31,8 @@ export default function TopBar({
   onSnippetIdInputChange,
   onRunCode,
   isCompiling,
+  theme,
+  onToggleTheme,
 }) {
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -49,17 +51,17 @@ export default function TopBar({
   }, []);
 
   return (
-    <header className="flex w-full flex-col gap-2 border-b border-app-border bg-zinc-950 px-2.5 py-2 sm:px-3 lg:flex-row lg:items-center lg:justify-between lg:px-5">
+    <header className="flex w-full flex-col gap-2 border-b border-app-border bg-app-panel px-2.5 py-2 sm:px-3 lg:flex-row lg:items-center lg:justify-between lg:px-5">
       <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
         <span className="hidden text-xs tracking-wide text-app-subtle sm:inline">Room</span>
-        <span className="max-w-[110px] truncate rounded-md bg-slate-900 px-2 py-1 text-xs font-medium text-app-text sm:max-w-none">{roomId}</span>
+        <span className="max-w-[110px] truncate rounded-md bg-app-muted px-2 py-1 text-xs font-medium text-app-text sm:max-w-none">{roomId}</span>
 
         {/* Language Selector */}
         <div ref={menuRef} className="relative group">
           <button
             type="button"
             onClick={() => setIsLanguageMenuOpen((prev) => !prev)}
-            className="flex shrink-0 items-center gap-1.5 rounded-md border border-app-border bg-slate-900/60 px-2.5 py-1.5 text-xs font-medium text-app-text transition hover:bg-slate-800 sm:px-3"
+            className="flex shrink-0 items-center gap-1.5 rounded-md border border-app-border bg-app-muted px-2.5 py-1.5 text-xs font-medium text-app-text transition hover:opacity-90 sm:px-3"
             title="Select language"
           >
             <span className="hidden sm:inline">{languages.find((l) => l.id === language)?.label || 'Language'}</span>
@@ -69,7 +71,7 @@ export default function TopBar({
 
           {/* Dropdown Menu */}
           <div
-            className={`absolute left-0 top-full z-20 mt-1 w-40 rounded-md border border-app-border bg-zinc-900 shadow-lg ${
+            className={`absolute left-0 top-full z-20 mt-1 w-40 rounded-md border border-app-border bg-app-panel shadow-lg ${
               isLanguageMenuOpen ? 'block' : 'hidden group-hover:block'
             }`}
           >
@@ -84,7 +86,7 @@ export default function TopBar({
                 className={`w-full px-3 py-2 text-left text-xs transition ${
                   language === lang.id
                     ? 'bg-cyan-600/20 text-cyan-400'
-                    : 'text-app-text hover:bg-slate-800/60'
+                    : 'text-app-text hover:bg-app-muted'
                 }`}
               >
                 {lang.label}
@@ -104,7 +106,7 @@ export default function TopBar({
           {isCompiling ? 'Compiling...' : 'Run'}
         </button>
         <span
-          className="inline-flex h-7 shrink-0 items-center rounded-md border border-app-border bg-slate-900/70 px-2.5 text-xs font-medium text-cyan-300"
+          className="inline-flex h-7 shrink-0 items-center rounded-md border border-app-border bg-app-muted px-2.5 text-xs font-medium text-cyan-500"
           title="Current editor"
         >
           {userName || 'You'}
@@ -112,7 +114,7 @@ export default function TopBar({
         <button
           type="button"
           onClick={onInvite}
-          className="shrink-0 whitespace-nowrap rounded-md border border-app-border px-3 py-1.5 text-xs text-app-text transition hover:bg-slate-800/70"
+          className="shrink-0 whitespace-nowrap rounded-md border border-app-border px-3 py-1.5 text-xs text-app-text transition hover:bg-app-muted"
         >
           Invite
         </button>
@@ -128,7 +130,7 @@ export default function TopBar({
           placeholder="Snippet ID"
           value={snippetIdInput}
           onChange={(event) => onSnippetIdInputChange(event.target.value)}
-          className="h-7 w-24 shrink-0 rounded-md border border-app-border bg-slate-900/70 px-2 text-xs text-app-text outline-none focus:border-cyan-500 sm:w-28"
+          className="h-7 w-24 shrink-0 rounded-md border border-app-border bg-app-muted px-2 text-xs text-app-text outline-none focus:border-cyan-500 sm:w-28"
         />
         <button
           type="button"
@@ -143,6 +145,15 @@ export default function TopBar({
           className="shrink-0 whitespace-nowrap rounded-md bg-rose-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-rose-500"
         >
           Delete
+        </button>
+        <button
+          type="button"
+          onClick={onToggleTheme}
+          className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-app-border bg-app-muted px-2 text-xs font-medium text-app-text transition hover:opacity-90"
+          title="Toggle theme"
+        >
+          {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+          <span className="hidden sm:inline">{theme === 'dark' ? 'Light' : 'Dark'}</span>
         </button>
         <div className="shrink-0">
           <PresenceAvatars users={users} />

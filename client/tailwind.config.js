@@ -6,12 +6,12 @@ export default {
     extend: {
       colors: {
         app: {
-          bg: '#020617',
-          panel: '#09090b',
-          muted: '#0f172a',
-          border: '#1f2937',
-          text: '#e5e7eb',
-          subtle: '#94a3b8',
+          bg: 'rgb(var(--app-bg) / <alpha-value>)',
+          panel: 'rgb(var(--app-panel) / <alpha-value>)',
+          muted: 'rgb(var(--app-muted) / <alpha-value>)',
+          border: 'rgb(var(--app-border) / <alpha-value>)',
+          text: 'rgb(var(--app-text) / <alpha-value>)',
+          subtle: 'rgb(var(--app-subtle) / <alpha-value>)',
         },
       },
       fontFamily: {
